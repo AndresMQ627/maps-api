@@ -7,53 +7,62 @@
 
 
 let map;
-let service; 
+let service;
 let markers = [];
-let infoWindow; 
+let infoWindow;
 const center = { lat: 30.378746, lng: -107.880062 };
 const restaurantListElement = document.getElementById("restaurants-list");
 let getPhotoUrlFunction;
-let currentSearch ="Tacos, comida, restaurantes"
+let currentSearch = "Tacos, comida, restaurantes"
 
 async function initMap() {
-  const defaultLocation = center;
+    const defaultLocation = center;
     const { Place, getPhotoUrl } = await google.maps.importLibrary("places");
-    getPhotoUrlFunction = getPhotoUrl; 
+    getPhotoUrlFunction = getPhotoUrl;
     map = new google.maps.Map(document.getElementById("map"), {
         center: defaultLocation,
         zoom: 14,
-        mapId: "ITSNCG-MAP", 
+        mapId: "ITSNCG-MAP",
     });
-    
+
     infoWindow = new google.maps.InfoWindow();
     findPlaces(currentSearch);
 }
 
 function clearMarkers() {
-  markers.forEach((marker) => marker.setMap(null));
-  markers = [];
+    markers.forEach((marker) => marker.setMap(null));
+    markers = [];
 
-  if (infoWindow) infoWindow.close();
-  if (restaurantListElement) {
-      restaurantListElement.innerHTML = "";
-  }
+    if (infoWindow) infoWindow.close();
+    if (restaurantListElement) {
+        restaurantListElement.innerHTML = "";
+    }
 }
 async function addMarkerAndDisplay(place, bounds) {
     const { AdvancedMarkerElement } = await google.maps.importLibrary("marker");
-  
+
     const marker = new AdvancedMarkerElement({
-      map,
-      position: place.location,
-      title: place.displayName,
+        map,
+        position: place.location,
+        title: place.displayName,
     });
 
     bounds.extend(place.location);
     markers.push(marker);
     displayRestaurant(place);
+
+
     
+    
+    
+    
+    const arregloFinal = [[place.Cg.location.lat, place.Cg.location.lng]];
+    console.log(arregloFinal);
+  
+
 
     marker.addListener("click", () => {
-        infoWindow.close(); 
+        infoWindow.close();
 
         const content = `
             <div class="info-window-content">
@@ -63,78 +72,79 @@ async function addMarkerAndDisplay(place, bounds) {
             </div>
         `;
 
-   
+
         infoWindow.setContent(content);
         infoWindow.open({
             anchor: marker,
             map: map,
-            shouldFocus: false, 
+            shouldFocus: false,
         });
-        
-        
+
+
         map.panTo(place.location);
     });
 }
 
 
+
 async function findPlaces(searchText) {
-  clearMarkers(); 
+    clearMarkers();
 
-  const { Place } = await google.maps.importLibrary("places");
-  
-  const request = {
-    textQuery: searchText,
-    //NOTA ENTRE MÁS DATOS SE PIDA DEL LOCAL, MÁS CARO SALE LA PETICIÓN
-    //OBTENER Más datos: https://developers.google.com/maps/documentation/places/web-service/data-fields?hl=en
-    fields: [
-        "displayName", "location", "businessStatus", "rating", "photos", "formattedAddress",
-    ],
-    //includedType: "restaurant",
-    locationBias: center,
-    isOpenNow: true,
-    language: "es-MX",
-    maxResultCount: 20,
-    //minRating: 3.2,
-    region: "mx",
-    useStrictTypeFiltering: false,
-  };
+    const { Place } = await google.maps.importLibrary("places");
 
-  const { places } = await Place.searchByText(request);
-  const { LatLngBounds } = await google.maps.importLibrary("core");
-  const bounds = new LatLngBounds();
+    const request = {
+        textQuery: searchText,
+        //NOTA ENTRE MÁS DATOS SE PIDA DEL LOCAL, MÁS CARO SALE LA PETICIÓN
+        //OBTENER Más datos: https://developers.google.com/maps/documentation/places/web-service/data-fields?hl=en
+        fields: [
+            "displayName", "location", "businessStatus", "rating", "photos", "formattedAddress",
+        ],
+        //includedType: "restaurant",
+        locationBias: center,
+        isOpenNow: true,
+        language: "es-MX",
+        maxResultCount: 20,
+        //minRating: 3.2,
+        region: "mx",
+        useStrictTypeFiltering: false,
+    };
+
+    const { places } = await Place.searchByText(request);
+    const { LatLngBounds } = await google.maps.importLibrary("core");
+    const bounds = new LatLngBounds();
 
 
-  if (places.length) {
-    console.log("Resultados de Places (New):", places);
+    if (places.length) {
+        console.log("Resultados de Places (New):", places);
 
-    for (const place of places) {
-        await addMarkerAndDisplay(place, bounds);
+        for (const place of places) {
+            await addMarkerAndDisplay(place, bounds);
+        }
+
+        map.fitBounds(bounds);
+
+    } else {
+        console.log("No se encontraron resultados para la búsqueda.");
+        if (restaurantListElement) {
+            restaurantListElement.innerHTML = `<p class='text-center mt-4'>No se encontraron resultados para "${searchText}".</p>`;
+        }
     }
-    
-    map.fitBounds(bounds);
-    
-  } else {
-    console.log("No se encontraron resultados para la búsqueda.");
-    if (restaurantListElement) {
-        restaurantListElement.innerHTML = `<p class='text-center mt-4'>No se encontraron resultados para "${searchText}".</p>`;
-    }
-  }
 }
 async function displayRestaurant(place) {
     if (!restaurantListElement) return;
 
     let photoUrl = "";
-    
+
     if (place.photos && place.photos.length > 0) {
         //console.log("URL",place.photos[0])
-        photoUrl = place.photos[0].getURI({ 
+        photoUrl = place.photos[0].getURI({
             //photo: place.photos[0], 
-            maxWidth: 500, 
-            maxHeight: 200 
+            maxWidth: 500,
+            maxHeight: 200
         });
     }
-    let statusText = place.businessStatus === 'OPERATIONAL' ? 
-        '<span class="text-success fw-bold">Abierto</span>' : 
+    let statusText = place.businessStatus === 'OPERATIONAL' ?
+        '<span class="text-success fw-bold">Abierto</span>' :
         '<span class="text-danger fw-bold">Estado Desconocido</span>';
 
     const card = `
@@ -155,24 +165,24 @@ async function displayRestaurant(place) {
 }
 
 async function searchCityAndPlaces(cityName) {
-   
+
     const { Geocoder } = await google.maps.importLibrary("geocoding");
     const geocoder = new Geocoder();
 
-  
+
     geocoder.geocode({ address: cityName }, (results, status) => {
         if (status === "OK" && results[0]) {
-           
+
             const newLocation = results[0].geometry.location;
-            
-          
+
+
             center.lat = newLocation.lat();
             center.lng = newLocation.lng();
 
-           
+
             map.setCenter(newLocation);
-        
-            findPlaces(currentSearch); 
+
+            findPlaces(currentSearch);
 
         } else {
             console.error("Geocoding falló con el estado:", status);
@@ -183,7 +193,7 @@ async function searchCityAndPlaces(cityName) {
 document.addEventListener("DOMContentLoaded", () => {
     const searchButton = document.getElementById("search-btn");
     const locationInput = document.getElementById("location-input");
-    
+
     if (searchButton && locationInput) {
         searchButton.addEventListener("click", () => {
             const searchText = locationInput.value.trim();
@@ -191,7 +201,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 searchCityAndPlaces(searchText);
             }
         });
-        
+
         locationInput.addEventListener("keydown", (event) => {
             if (event.key === "Enter") {
                 searchButton.click();
@@ -199,3 +209,5 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 });
+
+
